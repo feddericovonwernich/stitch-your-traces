@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+aiokafka
+httpx
+pydantic
+langchain
+langchain-community
+langchain-core
+langchain-openai
+openai
+ollama
+pydantic-settings

@@ -1,0 +1,189 @@
+version: "3.8"
+
+services:
+
+  # ──────────────────────────────────────────────────────────────── MySQL ────────────────────────────────────────────
+  mysql:
+    image: mysql:latest
+    container_name: blog-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: blog_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────── Kafka ────────────────────────────────────────────
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: blog-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_KRAFT_CLUSTER_ID: "kraft-cluster-abcdefghijklmn"  # 22-char base64-ish
+
+      # Listeners
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      # Single-node convenience tweaks
+      KAFKA_CFG_NUM_PARTITIONS: "1"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+
+      # Allow unauthenticated plaintext for local dev
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "bash", "-c", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────── Story Request Service ────────────────────────────
+  story-request-service:
+    build:
+      context: ./story-request-service
+      dockerfile: Dockerfile
+    container_name: story-service
+    restart: unless-stopped
+    ports:
+      # expose service API
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Optional: tune JVM
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+
+      # ─── OpenTelemetry config ───────────────────────────────
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: "story-request-service"
+      OTEL_RESOURCE_ATTRIBUTES: "service.version=1.0,deployment.environment=docker"
+      OTEL_TRACES_EXPORTER: "otlp"
+      OTEL_METRICS_EXPORTER: "otlp"
+      OTEL_LOGS_EXPORTER: "otlp"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_PROPAGATORS: "tracecontext,baggage"
+
+  # ──────────────────────────────────────────────────────────────── AI Story Creation Service ────────────────────────
+  story-worker:
+    build:
+      context: ./ai-story-creation-service
+      dockerfile: Dockerfile
+    container_name: story-worker
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      story-request-service:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    env_file:
+      - ./ai-story-creation-service/.env.docker
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+
+  # ──────────────────────────────────────────────────────────────── Jaeger (Traces) ──────────────────────────────────
+  jaeger:
+    image: jaegertracing/jaeger:2.7.0
+    container_name: jaeger
+    ports:
+      # Expose Jaeger UI
+      - "16686:16686"
+    environment:
+      SAMPLER_TYPE: const
+      SAMPLER_PARAM: "1"
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────── Prometheus (Metrics) ─────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      # Expose Prometheus UI
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────── Loki (Viewing Metrics) ───────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yml
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yml:ro
+    ports:
+      # Expose Loki UI
+      - "3100:3100"
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────── Grafana (Viewing Metrics) ────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      # Expose Grafana UI
+      - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+      jaeger:
+        condition: service_started
+      loki:
+        condition: service_started
+    environment:
+      GF_METRICS_ENABLED: "true"
+      GF_METRICS_DISABLE_TOTAL_STATS: "false"
+      GF_SECURITY_ADMIN_USER: "fedderico"
+      GF_SECURITY_ADMIN_PASSWORD: "v52319785"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-storage:/var/lib/grafana
+
+  # ──────────────────────────────────────────────────────────────── OpenTelemetry Collector ──────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./observability/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    depends_on:
+      jaeger:
+        condition: service_started
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    restart: unless-stopped
+
+
+volumes:
+  mysql_data:
+  kafka_data:
+  grafana-storage:

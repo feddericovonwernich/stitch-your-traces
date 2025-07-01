@@ -1,0 +1,19 @@
+# ──────────────────────────────────────────────────────────────────
+# Used to configure the app to run locally from an IDE, this spins up its dependencies, and they talk through localhost
+# ──────────────────────────────────────────────────────────────────
+spring:
+  docker:
+    compose:
+      enabled: true
+      file: docker-compose-dev.yml
+  datasource:
+    url: jdbc:mysql://localhost:3306/blog_db
+    username: root
+    password: rootpassword
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+kafka:
+  bootstrap-servers: localhost:9092

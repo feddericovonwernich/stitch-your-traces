@@ -1,0 +1,32 @@
+# loki-config.yml
+
+# disable authentication (single-tenant, local testing)
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  # ring configuration for ingesters (single-node)
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  # replicate every log once
+  replication_factor: 1
+  # base path for all Loki data
+  path_prefix: /tmp/loki
+
+schema_config:
+  configs:
+    - from: 2020-05-15           # schema activation date
+      store: tsdb
+      object_store: filesystem
+      schema: v13                # current index schema
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  filesystem:
+    directory: /tmp/loki/chunks  # where to store raw log chunks
