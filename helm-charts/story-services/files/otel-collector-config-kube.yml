@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"   # listen on all interfaces
+      http:
+        endpoint: "0.0.0.0:4318"   # listen on all interfaces
+
+processors:
+  batch:
+
+exporters:
+
+  # debug exporter.
+  debug:
+
+  # Export to Jaeger through OTLP protocol
+#  otlp/jaeger:
+#    endpoint: "jaeger:4317"
+#    tls:
+#      insecure: true
+#
+#  # Expose metrics to prometheus
+#  prometheus:
+#    endpoint: "0.0.0.0:8889"
+#
+#  # Logs
+#  loki:
+#    endpoint: "http://loki:3100/loki/api/v1/push"
+
+service:
+  pipelines:
+
+    # Traces pipeline goes to Jaeger
+    traces:
+      receivers:  [ otlp ]
+      processors: [ batch ]
+      exporters:  [ debug ]
+
+    # Metrics pipeline, for now just export to logging.
+    metrics:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ debug ]
+
+    # Logs pipeline, for now just export to logging.
+    logs:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ debug ]

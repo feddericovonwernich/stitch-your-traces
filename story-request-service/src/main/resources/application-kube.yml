@@ -1,16 +1,9 @@
 # ──────────────────────────────────────────────────────────────────
-# Used to configure the app to run locally from an IDE, and they talk through localhost,
-#  dependencies need to be handled manually
+# This configuration will be used when deploying on a kubernetes cluster, most of the configs will be handled
+#  when deploying.
 # ──────────────────────────────────────────────────────────────────
 spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/blog_db
-    username: root
-    password: rootpassword
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-
-kafka:
-  bootstrap-servers: localhost:9092

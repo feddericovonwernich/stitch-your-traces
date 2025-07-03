@@ -1,0 +1,149 @@
+replicaCount: 1
+
+image:
+
+  storyRequest:
+    repository: story-request-service
+    tag: "latest"
+    pullPolicy: Never
+
+  storyWorker:
+    repository: ai-story-creation-service
+    tag: "latest"
+    pullPolicy: Never
+
+
+mysql:
+  enabled: true
+  port: 3306
+  auth:
+    username: storyuser
+    password: storypassword
+    rootPassword: rootpassword
+    database: blog_db
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+waitForMysqlScript: |
+  HOST={{ include "story-services.releaseName" . }}-mysql
+  PORT={{ .Values.mysql.port }}
+  echo "⏳ Waiting for MySQL at $HOST:$PORT …"
+
+  # keep looping until the port is open
+  while ! nc -z -w5 "$HOST" "$PORT"; do
+    echo "  … still unreachable, retrying in 2 s"
+    sleep 2
+  done
+
+  echo "✅ MySQL is reachable"
+
+
+kafka:
+  enabled: true
+
+  # --- Turn on KRaft -----------------------------------------------------------
+  kraft:
+    enabled: true
+
+  # --- Listeners ---------------------------------------------------------------
+  listeners:
+    client:                 # 9092 inside the cluster
+      protocol: PLAINTEXT
+    controller:             # 9093 (internal use only)
+      protocol: PLAINTEXT
+    interbroker:            # 9094 (broker ↔ broker)
+      protocol: PLAINTEXT
+    external:               # 9095 (only if you expose it later)
+      protocol: PLAINTEXT
+
+  clusterId: sYrkLErnQb2p4WX7REcgtg
+
+  overrideConfiguration:
+    # tell the broker to auto-create any topic your clients request
+    auto.create.topics.enable: "true"
+
+    # (you’ll still want your replication overrides in here too)
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+
+  provisioning:
+    enabled: true
+    topics:
+      - name: story-requests
+        partitions: 1
+        replicationFactor: 1
+
+  # --- Storage & replica counts -----------------------------------------------
+  controller:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+  broker:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+
+waitForKafkaScript: |
+  HOST={{ include "story-services.releaseName" . }}-kafka
+  PORT={{ .Values.kafka.port | default 9092 }}
+  echo "⏳ Waiting for Kafka at $HOST:$PORT …"
+
+  # keep looping until the port is open
+  while ! nc -z -w5 "$HOST" "$PORT"; do
+    echo "  … still unreachable, retrying in 2 s"
+    sleep 2
+  done
+
+  echo "✅ Kafka is reachable"
+
+
+service:
+
+  storyRequest:
+    port: 8080
+
+  storyWorker:
+    port: 8081
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+
+  storyRequest:
+    javaOpts: -Xms256m -Xmx512m
+
+  storyWorker:
+    llmProvider: openai
+    openAiApiKey: TBD
+    kafkaTopic: story-requests
+
+
+otelCollector:
+  enabled: true
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: latest
+    pullPolicy: IfNotPresent
+
+
+ingress:
+  enabled: true
+  className: nginx
+  host: story.local
+  path: /
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: false
+    secretName: story-tls
