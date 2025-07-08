@@ -1,0 +1,15 @@
+dependencies:
+- name: mysql
+  repository: https://charts.bitnami.com/bitnami
+  version: 13.0.2
+- name: kafka
+  repository: https://charts.bitnami.com/bitnami
+  version: 32.3.1
+- name: story-request-service
+  repository: file://../story-request-service
+  version: 0.1.0
+- name: ai-story-creation-service
+  repository: file://../ai-story-creation-service
+  version: 0.1.0
+digest: sha256:895a21f4e66486ad16f37d83a91353a5b2d154c516a6eefd3f604a7ba1539679
+generated: "2025-07-08T14:13:08.541094493-03:00"

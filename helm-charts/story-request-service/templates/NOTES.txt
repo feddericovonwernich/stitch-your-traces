@@ -1,0 +1,95 @@
+{{- /*
+NOTES.txt
+Displayed after a successful Helm install or upgrade.
+*/ -}}
+
+─────────────────────────────
+🚀  {{ .Chart.Name }} deployed
+─────────────────────────────
+
+{{- /* Requirements section */ -}}
+{{- if not (and .Values.mysql.host .Values.kafka.host) }}
+⚠️ **WARNING:** This release rendered without database/broker endpoints.
+The application will **fail to start**.
+Check your `values.yaml` and reinstall.
+{{- end }}
+
+This service needs **both MySQL and Kafka** to run:
+
+  • MySQL – `{{ default "<mysql-host>" .Values.mysql.host }}:{{ default 3306 .Values.mysql.port }}`
+  • Kafka – `{{ default "<kafka-host>" .Values.kafka.host }}:{{ default 9092 .Values.kafka.port }}`
+
+If you used the default `values.yaml` you must supply real endpoints:
+
+```yaml
+mysql:
+  host: db.example.com
+  port: 3306
+  auth:
+    username: srs_user
+    password: s3cr3t
+
+kafka:
+  host: kafka.example.com
+  port: 9092
+```
+
+Install / upgrade with:
+
+```bash
+helm upgrade --install {{ .Release.Name }} {{ .Chart.Name }} -f my-values.yaml
+```
+
+─────────────────────────────
+🌐  Access the application
+─────────────────────────────
+
+1. Get the application URL:
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "story-request-service.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "story-request-service.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "story-request-service.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "story-request-service.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+─────────────────────────────
+🔎  Verify connectivity
+─────────────────────────────
+
+```bash
+kubectl logs deploy/{{ include "story-request-service.fullname" . }} | egrep "Connected to (MySQL|Kafka)"
+```
+
+You should see:
+
+```
+Connected to MySQL  @ db.example.com:3306
+Connected to Kafka  @ kafka.example.com:9092
+```
+
+If either line is missing, troubleshoot your network policy, service endpoints, and credentials.
+
+─────────────────────────────
+📦  Next steps
+─────────────────────────────
+* Scale replicas: `helm upgrade {{ .Release.Name }} --set replicaCount=3`
+* Enable HPA:     `helm upgrade {{ .Release.Name }} --set autoscaling.enabled=true`
+* Review security settings in `values.yaml` (read‑only FS, runAsNonRoot, etc.)
+
+Thanks for deploying **{{ .Chart.Name }}**! 🚀

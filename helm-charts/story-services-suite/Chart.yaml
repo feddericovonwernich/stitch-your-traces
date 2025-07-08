@@ -1,0 +1,25 @@
+apiVersion: v2
+name: story-services-suite
+description: A Helm chart for the Story Request and AI Story Creation services
+version: 0.1.0
+appVersion: "latest"
+
+dependencies:
+
+  - name: mysql
+    version: 13.0.2
+    repository: https://charts.bitnami.com/bitnami
+    condition: mysql.enabled
+
+  - name: kafka
+    version: 32.3.1
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+
+  - name: story-request-service
+    version: 0.1.0
+    repository: "file://../story-request-service"
+
+  - name: ai-story-creation-service
+    version: 0.1.0
+    repository: "file://../ai-story-creation-service"

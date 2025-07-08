@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-story-creation-service values schema",
+  "description": "Validate helm values so that Kafka & story-request endpoints are configured and LLM provider settings are coherent.",
+  "type": "object",
+  "properties": {
+    "kafka": {
+      "type": "object",
+      "description": "Kafka broker connection settings",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Kafka bootstrap host (DNS or IP)",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "description": "Kafka bootstrap port",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 9092
+        }
+      },
+      "required": ["host", "port"],
+      "additionalProperties": false
+    },
+
+    "storyRequest": {
+      "type": "object",
+      "description": "Endpoint for the story-request service that persists stories",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "DNS name or IP of the story-request service",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port on which the story-request service listens",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 8080
+        }
+      },
+      "required": ["host", "port"],
+      "additionalProperties": false
+    },
+
+    "env": {
+      "type": "object",
+      "description": "Environment-specific settings",
+      "properties": {
+        "kafka": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "description": "Kafka topic that the service will publish stories to",
+              "minLength": 1
+            }
+          },
+          "required": ["topic"],
+          "additionalProperties": false
+        },
+
+        "llmProvider": {
+          "type": "object",
+          "properties": {
+            "selected": {
+              "type": "string",
+              "description": "Which LLM provider to use (openai or ollama)",
+              "enum": ["openai", "ollama"]
+            },
+
+            "openai": {
+              "type": "object",
+              "description": "OpenAI provider-specific config",
+              "properties": {
+                "apiKey": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            },
+
+            "ollama": {
+              "type": "object",
+              "description": "Ollama provider-specific config",
+              "properties": {
+                "apiUrl": { "type": "string" },
+                "model":  { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": ["selected"],
+          "additionalProperties": false,
+
+          "allOf": [
+            {
+              "if": {
+                "properties": { "selected": { "const": "openai" } }
+              },
+              "then": {
+                "required": ["openai"],
+                "properties": {
+                  "openai": {
+                    "required": ["apiKey"]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": { "selected": { "const": "ollama" } }
+              },
+              "then": {
+                "required": ["ollama"],
+                "properties": {
+                  "ollama": {
+                    "required": ["apiUrl", "model"],
+                    "properties": {
+                      "apiUrl": { "minLength": 1 },
+                      "model":  { "minLength": 1 }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": ["kafka", "llmProvider"],
+      "additionalProperties": true
+    }
+  },
+
+  "required": ["kafka", "storyRequest", "env"],
+  "additionalProperties": true
+}

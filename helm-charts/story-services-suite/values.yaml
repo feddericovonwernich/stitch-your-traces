@@ -1,0 +1,108 @@
+###############################################################################
+# KAFKA #
+###############################################################################
+kafka:
+  enabled: true
+
+  # --- Turn on KRaft -----------------------------------------------------------
+  kraft:
+    enabled: true
+
+  # --- Listeners ---------------------------------------------------------------
+  listeners:
+    client:                 # 9092 inside the cluster
+      protocol: PLAINTEXT
+    controller:             # 9093 (internal use only)
+      protocol: PLAINTEXT
+    interbroker:            # 9094 (broker ↔ broker)
+      protocol: PLAINTEXT
+    external:               # 9095 (only if you expose it later)
+      protocol: PLAINTEXT
+
+  clusterId: sYrkLErnQb2p4WX7REcgtg
+
+  overrideConfiguration:
+    # tell the broker to auto-create any topic your clients request
+    auto.create.topics.enable: "true"
+
+    # (you’ll still want your replication overrides in here too)
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+
+  # TODO I should let the service create this.
+  provisioning:
+    enabled: true
+    topics:
+      - name: story-requests
+        partitions: 1
+        replicationFactor: 1
+
+  # --- Storage & replica counts -----------------------------------------------
+  # TODO Where does this store? Why do I have to specify a size?
+  controller:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+
+  # TODO Where does this store? Why do I have to specify a size?
+  broker:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+
+###############################################################################
+# MYSQL #
+###############################################################################
+mysql:
+  enabled: true
+  port: 3306
+
+  auth:
+    # TODO Feels like all of these should be in a secret.
+    username: storyuser
+    password: storypassword
+    rootPassword: rootpassword
+    database: story_db
+
+  # TODO Where does this store? Why do I have to specify a size?
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+###############################################################################
+# Story Request Service # TODO Properly complete this.
+###############################################################################
+story-request-service:
+
+  mysql:
+    host: {{ .Release.Name }}-mysql
+    database: story_db
+    auth:
+      username: storyuser
+      password: storypassword
+
+  kafka:
+    host: {{ .Release.Name }}-kafka
+
+###############################################################################
+# AI Story Creation Service # TODO Properly complete this.
+###############################################################################
+ai-story-creation-service:
+
+  kafka:
+    host: {{ .Release.Name }}-kafka
+
+  storyRequest:
+    host: {{ .Release.Name }}-story-request-service
+
+  env:
+    kafka:
+      topic: story-requests
+    llmProvider:
+      selected: openai
+      openai:
+        apiKey: somekey

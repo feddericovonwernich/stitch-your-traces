@@ -1,4 +1,4 @@
-# Default values for story-service.
+# Default values for story-request-service.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -6,15 +6,17 @@
 replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+# TODO Should not be latest, and the image should be in some repository.
 image:
-  repository: nginx
+  repository: story-request-service
   # This sets the pull policy for images.
-  pullPolicy: IfNotPresent
+  pullPolicy: Never
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
+
 # This is to override the chart name.
 nameOverride: ""
 fullnameOverride: ""
@@ -121,3 +123,24 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# The service needs a MySQL database to work properly, it will not start without a database.
+mysql:
+  host: ""
+  port: 3306
+  database: ""
+  auth:
+    username: ""
+    password: ""
+
+# The service also needs a Kafka instance to work, it will not start without a kafka instance.
+kafka:
+  host: ""
+  port: 9092
+
+# Values for some environment variables.
+env:
+  spring:
+    profile: kube # SPRING_PROFILES_ACTIVE # TODO Think this through, should I even have this ?
+  java:
+    options: "" # JAVA_OPTS

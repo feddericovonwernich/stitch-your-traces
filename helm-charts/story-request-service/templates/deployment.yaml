@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "story-request-service.fullname" . }}
+  labels:
+    {{- include "story-request-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "story-request-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "story-request-service.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      serviceAccountName: {{ include "story-request-service.serviceAccountName" . }}
+
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              HOST={{ .Values.mysql.host }}
+              PORT={{ .Values.mysql.port | default 3306 }}
+              echo "⏳ Waiting for MySQL at $HOST:$PORT …"
+            
+              # keep looping until the port is open
+              while ! nc -z -w5 "$HOST" "$PORT"; do
+              echo "  … still unreachable, retrying in 2 s"
+              sleep 2
+              done
+            
+              echo "✅ MySQL is reachable"
+
+        - name: wait-for-kafka
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              HOST={{ .Values.kafka.host }}
+              PORT={{ .Values.kafka.port | default 9092 }}
+              echo "⏳ Waiting for Kafka at $HOST:$PORT …"
+            
+              # keep looping until the port is open
+              while ! nc -z -w5 "$HOST" "$PORT"; do
+              echo "  … still unreachable, retrying in 2 s"
+              sleep 2
+              done
+            
+              echo "✅ Kafka is reachable"
+
+      containers:
+        - name: {{ .Chart.Name }}
+
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port | default 3306 }}/{{ .Values.mysql.database }}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.mysql.auth.username }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: {{ .Values.mysql.auth.password }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
+
+              {{- if .Values.env.spring.profile }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.spring.profile | quote }}
+              {{- end }}
+
+              {{- if .Values.env.java.options }}
+            - name: JAVA_OPTS
+              value: {{ .Values.env.java.options | quote }}
+              {{- end }}
+
+
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
