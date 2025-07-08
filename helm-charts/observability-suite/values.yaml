@@ -1,0 +1,179 @@
+# --------------------------------------------------------------------
+# observability-suite/values.yaml
+# --------------------------------------------------------------------
+
+###############################################################################
+# GRAFANA # https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+###############################################################################
+grafana:
+
+  # TODO: These are secrets, how should this be handled?
+  adminUser: Fedderico
+  adminPassword: mycustompass
+
+  # TODO: What is this configuring?
+  persistence:
+    enabled: true
+    size: 10Gi
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  # Expose UI
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.feddericovonwernich.com
+    paths:
+      - /
+
+  # Turn the watcher on, this will watch for ConfigMaps that register data sources.
+  sidecar:
+    datasources:
+      enabled: true
+
+###############################################################################
+# KUBE-PROMETHEUS-STACK # https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml
+###############################################################################
+kube-prometheus-stack:
+
+  grafana:
+    # Avoid a duplicate Grafana
+    enabled: false
+
+  prometheus:
+
+    prometheusSpec:
+      retention: 15d
+      retentionSize: 30GiB
+      # Pick up *all* ServiceMonitors, PodMonitor and Rules from the cluster.
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - prometheus.feddericovonwernich.com
+      # Paths must match the routePrefix (default “/”).
+      paths:
+        - /
+      pathType: Prefix
+
+###############################################################################
+# LOKI # https://github.com/grafana/loki/blob/main/production/helm/loki/values.yaml
+###############################################################################
+loki:
+  deploymentMode: SingleBinary
+
+  singleBinary:
+    replicas: 1
+
+  loki:
+    commonConfig:
+      replication_factor: 1
+      path_prefix: /var/loki
+
+    # Disable auth for now
+    structuredConfig:
+      auth_enabled: false
+
+    storage:
+      type: s3
+      bucketNames:
+        chunks: loki-chunks
+        ruler: loki-ruler
+        admin: loki-admin
+      s3:
+        endpoint: http://{{ .Release.Name }}-minio:9000
+        # TODO: Can I remove these settings here?
+        region: us-east-1
+        accessKeyId: loki
+        secretAccessKey: supersecret
+        s3ForcePathStyle: true
+        insecure: true
+
+    schemaConfig:
+      configs:
+        - from: "2025-07-07"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+
+    storageConfig:
+      boltdb_shipper:
+        shared_store: s3
+        active_index_directory: /var/loki/index
+        cache_location: /var/loki/cache
+        cache_ttl: 24h
+
+  read: { replicas: 0 }
+  write: { replicas: 0 }
+  backend: { replicas: 0 }
+
+  # Minio to emulate a S3 bucket
+  minio:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 20Gi
+    buckets:
+      - name: loki-chunks
+      - name: loki-ruler
+      - name: loki-admin
+
+  # Disable auth for now
+  gateway:
+    basicAuth:
+      enabled: false
+
+###############################################################################
+# JAEGER # https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger/values.yaml
+###############################################################################
+jaeger:
+
+  provisionDataStore:
+    elasticsearch: false
+    cassandra: false
+
+  allInOne:
+    enabled: true
+
+    collector:
+      otlp:
+        grpc:
+          name: otlp-grpc
+          port: 4317
+        http:
+          name: otlp-http
+          port: 4318
+
+    # ――― Expose the Jaeger UI (port 16686) ―――
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - jaeger.feddericovonwernich.com
+      pathType: Prefix
+      tls:
+        - secretName: jaeger-tls
+          hosts:
+            - jaeger.feddericovonwernich.com
+
+  # standalone sub-charts stay off
+  agent:
+    enabled: false
+  collector:
+    enabled: false
+  query:
+    enabled: false
+
+  # Storage is memory for ease of configuration
+  storage:
+    type: memory

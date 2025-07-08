@@ -15,18 +15,20 @@ exporters:
   debug:
 
   # Export to Jaeger through OTLP protocol
-#  otlp/jaeger:
-#    endpoint: "jaeger:4317"
-#    tls:
-#      insecure: true
+  otlphttp/jaeger:
+    endpoint: "http://observability-jaeger-collector.observability.svc.cluster.local:4318"
+    tls:
+      insecure: true
+
 #
 #  # Expose metrics to prometheus
 #  prometheus:
 #    endpoint: "0.0.0.0:8889"
 #
-#  # Logs
-#  loki:
-#    endpoint: "http://loki:3100/loki/api/v1/push"
+
+  # Logs
+  loki:
+    endpoint: "http://observability-loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
 
 service:
   pipelines:
@@ -35,7 +37,7 @@ service:
     traces:
       receivers:  [ otlp ]
       processors: [ batch ]
-      exporters:  [ debug ]
+      exporters:  [ otlphttp/jaeger, debug ]
 
     # Metrics pipeline, for now just export to logging.
     metrics:
@@ -43,8 +45,8 @@ service:
       processors: [ batch ]
       exporters: [ debug ]
 
-    # Logs pipeline, for now just export to logging.
+    # Logs pipeline
     logs:
       receivers: [ otlp ]
       processors: [ batch ]
-      exporters: [ debug ]
+      exporters: [ loki ]

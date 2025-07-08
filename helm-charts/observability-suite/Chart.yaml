@@ -1,0 +1,27 @@
+apiVersion: v2
+name: observability-suite
+description: Umbrella chart for Grafana + Prometheus + Loki + Jaeger
+type: application
+version: 0.1.0
+appVersion: "1.0"
+
+dependencies:
+
+  - name: grafana
+    version: 9.2.10
+    repository: https://grafana.github.io/helm-charts
+
+  # Prometheus + exporters + rules + alerting in one package
+  # Disable the Grafana sub-chart that kps brings to avoid a duplicate instance
+  - name: kube-prometheus-stack
+    alias: kube-prometheus-stack
+    version: 75.9.0
+    repository: https://prometheus-community.github.io/helm-charts
+
+  - name: loki
+    version: 6.30.1
+    repository: https://grafana.github.io/helm-charts
+
+  - name: jaeger
+    version: 3.4.1
+    repository: https://jaegertracing.github.io/helm-charts

@@ -140,7 +140,7 @@ otelCollector:
 ingress:
   enabled: true
   className: nginx
-  host: story.local
+  host: story.feddericovonwernich.com
   path: /
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
