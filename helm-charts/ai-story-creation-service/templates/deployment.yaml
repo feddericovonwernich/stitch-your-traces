@@ -42,7 +42,7 @@ spec:
             - sh
             - -c
             - |
-              HOST={{ .Values.kafka.host }}
+              HOST={{ .Release.Name }}-{{ .Values.kafka.host }}
               PORT={{ .Values.kafka.port | default 9092 }}
               echo "⏳ Waiting for Kafka at $HOST:$PORT …"
               
@@ -60,8 +60,8 @@ spec:
             - sh
             - -c
             - |
-              HOST={{ .Values.storyRequest.host }}
-              PORT={{ .Values.storyRequest.port }}
+              HOST={{ .Release.Name }}-{{ .Values.storyRequest.host }}
+              PORT={{ .Values.storyRequest.port | default 8080 }}
               echo "⏳ Waiting for story-request at $HOST:$PORT …"
               
               # keep looping until the port is open
@@ -89,20 +89,39 @@ spec:
               protocol: TCP
 
           env:
+
+            - name: STORY_SERVICE_URL
+              value: {{ .Release.Name }}-{{ .Values.storyRequest.host }}:{{ .Values.storyRequest.port | default 8080 }}
+
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Release.Name }}-{{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
+
+            {{- if .Values.env }}
             - name: LLM_PROVIDER
               value: {{ .Values.env.llmProvider.selected }}
-            - name: STORY_SERVICE_URL
-              value: {{ .Values.storyRequest.host }}:{{ .Values.storyRequest.port }}
-            - name: OPENAI_API_KEY
-              value: {{ .Values.env.llmProvider.openai.apiKey }}
-            - name: KAFKA_TOPIC
-              value: {{ .Values.env.kafka.topic }}
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: {{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
+
+            {{- if .Values.env.llmProvider.ollama }}
             - name: OLLAMA_API_URL
               value: {{ .Values.env.llmProvider.ollama.apiUrl }}
+
             - name: OLLAMA_MODEL
               value: {{ .Values.env.llmProvider.ollama.model }}
+            {{- end }}
+
+            - name: KAFKA_TOPIC
+              value: {{ .Values.env.kafka.topic }} # TODO This should not be optional, need to ensure its present.
+
+            # If there's an existing secret, read it. Otherwise, read from Values.yaml.
+            - name: OPENAI_API_KEY
+              {{- if .Values.env.llmProvider.openai.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.env.llmProvider.openai.existingSecret }}
+                  key: api-key
+              {{- else }}
+              value: {{ .Values.env.llmProvider.openai.apiKey | quote }}
+              {{- end }}
+            {{- end }}
 
           {{- with .Values.livenessProbe }}
           livenessProbe:

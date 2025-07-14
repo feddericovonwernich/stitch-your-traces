@@ -22,7 +22,7 @@ kafka:
   clusterId: sYrkLErnQb2p4WX7REcgtg
 
   overrideConfiguration:
-    # tell the broker to auto-create any topic your clients request
+    # Tell the broker to auto-create any topic your clients request
     auto.create.topics.enable: "true"
 
     # (you’ll still want your replication overrides in here too)
@@ -39,14 +39,12 @@ kafka:
         replicationFactor: 1
 
   # --- Storage & replica counts -----------------------------------------------
-  # TODO Where does this store? Why do I have to specify a size?
   controller:
     replicaCount: 1
     persistence:
       enabled: true
       size: 5Gi
 
-  # TODO Where does this store? Why do I have to specify a size?
   broker:
     replicaCount: 1
     persistence:
@@ -61,48 +59,45 @@ mysql:
   port: 3306
 
   auth:
-    # TODO Feels like all of these should be in a secret.
+    existingSecret: mysql-auth # Secret with this name needs to be present in the cluster.
     username: storyuser
-    password: storypassword
-    rootPassword: rootpassword
     database: story_db
 
-  # TODO Where does this store? Why do I have to specify a size?
   primary:
     persistence:
       enabled: true
       size: 8Gi
 
 ###############################################################################
-# Story Request Service # TODO Properly complete this.
+# Story Request Service #
 ###############################################################################
 story-request-service:
 
   mysql:
-    host: {{ .Release.Name }}-mysql
-    database: story_db
+    host: mysql
     auth:
+      database: story_db
+      existingSecret: mysql-auth
       username: storyuser
-      password: storypassword
 
   kafka:
-    host: {{ .Release.Name }}-kafka
+    host: kafka
 
 ###############################################################################
-# AI Story Creation Service # TODO Properly complete this.
-###############################################################################
+## AI Story Creation Service #
+################################################################################
 ai-story-creation-service:
 
   kafka:
-    host: {{ .Release.Name }}-kafka
+    host: kafka
 
   storyRequest:
-    host: {{ .Release.Name }}-story-request-service
+    host: story-request-service
 
   env:
     kafka:
-      topic: story-requests
+      topic: story-requests # TODO This topic should be configurable in Story Request Service. ?
     llmProvider:
       selected: openai
       openai:
-        apiKey: somekey
+        existingSecret: openai-api-key

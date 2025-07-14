@@ -43,7 +43,7 @@ spec:
             - sh
             - -c
             - |
-              HOST={{ .Values.mysql.host }}
+              HOST={{ .Release.Name }}-{{ .Values.mysql.host }}
               PORT={{ .Values.mysql.port | default 3306 }}
               echo "⏳ Waiting for MySQL at $HOST:$PORT …"
             
@@ -61,7 +61,7 @@ spec:
             - sh
             - -c
             - |
-              HOST={{ .Values.kafka.host }}
+              HOST={{ .Release.Name }}-{{ .Values.kafka.host }}
               PORT={{ .Values.kafka.port | default 9092 }}
               echo "⏳ Waiting for Kafka at $HOST:$PORT …"
             
@@ -90,21 +90,34 @@ spec:
               protocol: TCP
 
           env:
+
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port | default 3306 }}/{{ .Values.mysql.database }}
+              value: jdbc:mysql://{{ .Release.Name }}-{{ .Values.mysql.host }}:{{ .Values.mysql.port | default 3306 }}/{{ .Values.mysql.auth.database }}
+
             - name: SPRING_DATASOURCE_USERNAME
               value: {{ .Values.mysql.auth.username }}
-            - name: SPRING_DATASOURCE_PASSWORD
-              value: {{ .Values.mysql.auth.password }}
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: {{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
 
-              {{- if .Values.env.spring.profile }}
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.env.spring.profile | quote }}
+            # If there's an existing secret, take the password from there. Otherwise, read it directly from values.yaml
+            - name: SPRING_DATASOURCE_PASSWORD
+              {{- if .Values.mysql.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.auth.existingSecret }}
+                  key: mysql-password
+              {{- else }}
+              value: {{ .Values.mysql.auth.password | quote }}
               {{- end }}
 
-              {{- if .Values.env.java.options }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Release.Name }}-{{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
+
+            # Optional environment vars.
+              {{- if .Values.env.spring }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.spring.profile | default "kube" | quote }}
+              {{- end }}
+
+            {{- if and .Values.env.java .Values.env.java.options }}
             - name: JAVA_OPTS
               value: {{ .Values.env.java.options | quote }}
               {{- end }}

@@ -4,6 +4,7 @@
   "description": "Validate helm values so that Kafka & story-request endpoints are configured and LLM provider settings are coherent.",
   "type": "object",
   "properties": {
+
     "kafka": {
       "type": "object",
       "description": "Kafka broker connection settings",
@@ -21,7 +22,7 @@
           "default": 9092
         }
       },
-      "required": ["host", "port"],
+      "required": ["host"],
       "additionalProperties": false
     },
 
@@ -42,34 +43,21 @@
           "default": 8080
         }
       },
-      "required": ["host", "port"],
+      "required": ["host"],
       "additionalProperties": false
     },
 
+
     "env": {
       "type": "object",
-      "description": "Environment-specific settings",
       "properties": {
-        "kafka": {
-          "type": "object",
-          "properties": {
-            "topic": {
-              "type": "string",
-              "description": "Kafka topic that the service will publish stories to",
-              "minLength": 1
-            }
-          },
-          "required": ["topic"],
-          "additionalProperties": false
-        },
-
         "llmProvider": {
           "type": "object",
           "properties": {
             "selected": {
               "type": "string",
-              "description": "Which LLM provider to use (openai or ollama)",
-              "enum": ["openai", "ollama"]
+              "enum": ["openai", "ollama"],
+              "description": "Which LLM provider to use"
             },
 
             "openai": {
@@ -78,19 +66,31 @@
               "properties": {
                 "apiKey": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "description": "Raw API key placed directly in values.yaml"
+                },
+                "existingSecret": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Name of a pre-created Kubernetes Secret that holds the API key"
                 }
               },
-              "additionalProperties": false
+              "additionalProperties": false,
+
+              "oneOf": [
+                { "required": ["apiKey"] },
+                { "required": ["existingSecret"] }
+              ]
             },
 
             "ollama": {
               "type": "object",
               "description": "Ollama provider-specific config",
               "properties": {
-                "apiUrl": { "type": "string" },
-                "model":  { "type": "string" }
+                "apiUrl": { "type": "string", "minLength": 1 },
+                "model":  { "type": "string", "minLength": 1 }
               },
+              "required": ["apiUrl", "model"],
               "additionalProperties": false
             }
           },
@@ -99,34 +99,12 @@
 
           "allOf": [
             {
-              "if": {
-                "properties": { "selected": { "const": "openai" } }
-              },
-              "then": {
-                "required": ["openai"],
-                "properties": {
-                  "openai": {
-                    "required": ["apiKey"]
-                  }
-                }
-              }
+              "if":   { "properties": { "selected": { "const": "openai" } } },
+              "then": { "required": ["openai"] }
             },
             {
-              "if": {
-                "properties": { "selected": { "const": "ollama" } }
-              },
-              "then": {
-                "required": ["ollama"],
-                "properties": {
-                  "ollama": {
-                    "required": ["apiUrl", "model"],
-                    "properties": {
-                      "apiUrl": { "minLength": 1 },
-                      "model":  { "minLength": 1 }
-                    }
-                  }
-                }
-              }
+              "if":   { "properties": { "selected": { "const": "ollama" } } },
+              "then": { "required": ["ollama"] }
             }
           ]
         }

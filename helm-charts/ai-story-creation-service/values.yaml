@@ -124,25 +124,24 @@ tolerations: []
 affinity: {}
 
 # The service also needs a Kafka instance to work, it will not start without a kafka instance.
-kafka:
-  host: ""
-  port: 9092
+kafka: {}
+#  host: dummy_host
+#  port: 9092
 
 # The service needs to be able to reach the story-request-service in order to save stories.
-storyRequest:
-  host: ""
-  port: 8080
+storyRequest: {}
+#  host: dummy_host
+#  port: 8080
 
 # Values for some environment variables.
-# TODO, if llmProvider.selected is set to "openai", then openai.apiKey must be set
-# TODO, if llmProvider.selected is set to "ollama", then apiUrl and model must be set.
-env:
-  llmProvider:
-    selected: ""
-    openai:
-      apiKey: ""
-    ollama:
-      apiUrl: ""
-      model: ""
-  kafka:
-    topic: ""
+env: {}
+#  llmProvider:
+#    selected: openai
+#    openai:
+#      apiKey: dummy_api_key
+#      existingSecret: dummy_secret # Secret with this name needs to be present in the cluster.
+#    ollama:
+#      apiUrl: dummy_url
+#      model: dummy_model
+#  kafka:
+#    topic: dummy_topic

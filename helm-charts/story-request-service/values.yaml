@@ -56,7 +56,7 @@ service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 80
+  port: 8080
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -87,15 +87,16 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+# TODO Need to add a health check to this service.
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /stories
+    port: 8080
 readinessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /stories
+    port: 8080
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
@@ -125,22 +126,24 @@ tolerations: []
 affinity: {}
 
 # The service needs a MySQL database to work properly, it will not start without a database.
-mysql:
-  host: ""
-  port: 3306
-  database: ""
-  auth:
-    username: ""
-    password: ""
+mysql: {}
+#  host: dummy_port
+#  port: 3306
+#  auth:
+#    existingSecret: "" # Secret with this name needs to be present in the cluster.
+#    username: dummy_user
+#    password: dummy_pass
+#    database: dummy_db
 
 # The service also needs a Kafka instance to work, it will not start without a kafka instance.
-kafka:
-  host: ""
-  port: 9092
+kafka: {}
+#  host: dummy_host
+#  port: 9092
 
 # Values for some environment variables.
-env:
-  spring:
-    profile: kube # SPRING_PROFILES_ACTIVE # TODO Think this through, should I even have this ?
-  java:
-    options: "" # JAVA_OPTS
+env: {}
+#  spring:
+     # TODO Think this through, should I even have this ?
+#    profile: kube # SPRING_PROFILES_ACTIVE
+#  java:
+#    options: "" # JAVA_OPTS
