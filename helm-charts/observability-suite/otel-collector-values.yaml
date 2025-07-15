@@ -1,0 +1,102 @@
+# Daemon set will set one collector per node in the cluster.
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.129.1"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+presets:
+  hostMetrics:           # mounts /, /var/log, etc. & injects hostmetrics receiver
+    enabled: true
+  kubernetesAttributes:  # injects k8s attributes processor & RBAC
+    enabled: true
+
+# 1️⃣  open 8889/TCP on the pod *and* on the Service
+ports:
+  prometheus:                 # ← name can be anything; must match below
+    enabled: true
+    containerPort: 8889       # inside the pod
+    servicePort: 8889         # exposed by the Service
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318       # inside the pod (default OTLP HTTP port)
+    servicePort: 4318         # exposed by the Service
+    protocol: TCP
+  otlp-grpc:
+    enabled: true
+    containerPort: 4317       # inside the pod (default OTLP gRPC port)
+    servicePort: 4317         # exposed by the Service
+    protocol: TCP
+
+# 3️⃣  have Prometheus scrape every agent pod (DaemonSet ⇒ PodMonitor)
+podMonitor:
+  enabled: true
+  metricsEndpoints:
+    - port: prometheus
+      path: /metrics
+      interval: 15s
+
+# ─── Collector configuration ──────────────────────────────────────────────────────────────────────────────────────────
+# Everything under `.config` is copied verbatim into the
+# generated ConfigMap (key: relay) and becomes /conf/relay.yaml
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc: {}
+        http: {}
+    hostmetrics:
+      collection_interval: 10s
+      scrapers:
+        cpu: {}
+        filesystem: {}
+        memory: {}
+
+  processors:
+    batch: {}
+
+  exporters:
+    # ─── metrics ───────────────────────────────────────────────
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+    
+    # ─── traces ────────────────────────────────────────────────    
+    # Export to Jaeger through OTLP protocol
+    otlphttp/jaeger:
+      endpoint: "http://observability-jaeger-collector.observability.svc.cluster.local:4318"
+      tls:
+        insecure: true
+  
+    # ─── logs ─────────────────────────────────────────────────
+    loki:
+      endpoint: "http://observability-loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
+
+  service:
+    pipelines:
+      
+      # Host/Node + OTLP‑ingested metrics
+      metrics:
+        receivers:  [hostmetrics, otlp]
+        processors: [batch]
+        exporters:  [prometheus]
+      
+      # Traces coming in over OTLP
+      traces:
+        receivers:  [otlp]
+        processors: [batch]
+        exporters:  [otlphttp/jaeger]
+      
+      # Logs coming in over OTLP
+      logs:
+        receivers:  [otlp]
+        processors: [batch]
+        exporters:  [loki]

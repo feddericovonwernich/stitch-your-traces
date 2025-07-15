@@ -73,6 +73,20 @@ mysql:
 ###############################################################################
 story-request-service:
 
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    hosts:
+      - host: story.feddericovonwernich.com
+        paths:
+          - path: /
+            pathType: Prefix
+
+  podAnnotations:
+    instrumentation.opentelemetry.io/inject-java: "story-services-instrumentation"
+
   mysql:
     host: mysql
     auth:
@@ -87,6 +101,9 @@ story-request-service:
 ## AI Story Creation Service #
 ################################################################################
 ai-story-creation-service:
+
+  podAnnotations:
+    instrumentation.opentelemetry.io/inject-python: "story-services-instrumentation"
 
   kafka:
     host: kafka

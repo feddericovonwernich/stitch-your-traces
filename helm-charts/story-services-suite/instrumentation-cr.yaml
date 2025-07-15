@@ -1,0 +1,36 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: story-services-instrumentation
+  namespace: story-space
+spec:
+  propagators: [tracecontext, baggage]
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+
+  # ─── env injected into *every* container, any language ───
+  env:
+    # 1) Grab the node’s IP (Downward API)
+    - name: NODE_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.hostIP
+
+    # 2) Point the SDK to the node‑local collector (gRPC port 4317)
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://$(NODE_IP):4317
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: grpc  # Required for Python; Java already defaults to gRPC
+
+  # ────────── Java block ──────────
+  java:
+    env:
+      - name: OTEL_JAVAAGENT_DEBUG
+        value: "false"
+
+  # ────────── Python block ──────────
+  python:
+    env:
+      - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+        value: "true"

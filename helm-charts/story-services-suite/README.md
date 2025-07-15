@@ -28,3 +28,74 @@ kubectl create secret generic openai-api-key \
 ```
 
 It is applied the same way as above secret.
+
+## Instrumentation configuration
+
+### Using the OpenTelemetry Kubernetes Operator
+
+#### Install a cert-manager if there's not one already
+```bash
+# Add Jetstack repository
+helm repo add jetstack https://charts.jetstack.io && helm repo update
+
+# Install cert-manager
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
+```
+
+To check if it's running already:
+
+```bash
+kubectl get pods -n cert-manager
+```
+
+Install the operator's chart:
+
+```bash
+# Add OTel repository
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts && helm repo update
+
+# Install
+helm install otel-operator open-telemetry/opentelemetry-operator --namespace opentelemetry-operator-system --create-namespace
+```
+
+To check if it's running already:
+```bash
+kubectl --namespace opentelemetry-operator-system get pods -l "app.kubernetes.io/instance=otel-operator"
+```
+
+## Installing the Story-Services-Suite
+
+Command to install:
+
+```bash
+helm upgrade --install story-services ./ -n story-space --create-namespace
+```
+
+Command to check pods:
+```bash
+kubectl get pods -n story-space
+```
+
+Command to un-install:
+
+```bash
+helm uninstall story-services -n story-space
+```
+
+Generate template for debugging:
+```bash
+helm template my-story ./ --namespace story-space --values ./values.yaml > template.yml
+```
+
+### Apply OpenTelemetry instrumentation
+
+To put the instrumentation in place, we need to apply the `instrumentation-cr.yaml` file.
+
+```bash
+kubectl apply -f ./instrumentation-cr.yaml -n story-space
+```
+
+To remove the instrumentation custom resource:
+```bash
+kubectl delete -f ./instrumentation-cr.yaml -n story-space
+```
