@@ -28,7 +28,7 @@ RUN chmod +x /app/entrypoint.sh
 
 # 4) Expose your port and default OTEL_ENABLED
 EXPOSE 8080
-ENV OTEL_ENABLED=false
+ENV OTEL_AGENT_ENABLED=false
 
 # 5) Use the script as your entrypoint
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]

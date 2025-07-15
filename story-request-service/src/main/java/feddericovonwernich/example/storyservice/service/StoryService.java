@@ -31,7 +31,8 @@ public class StoryService {
 
     private static final Logger logger = getLogger(StoryService.class);
 
-    public static final String STORY_REQUESTS = "story_requests";
+    @Value("${kafka.publish-topic:story-requests}")
+    private String publishTopic;
 
     private final StoryRepository storyRepository;
     private final StoryRequestRepository requestRepository;
@@ -60,11 +61,11 @@ public class StoryService {
             var existingTopics = admin.listTopics().names().get();
 
             // Only create it if it doesn't exist.
-            if (!existingTopics.contains(STORY_REQUESTS)) {
-                NewTopic storyRequestTopic = new NewTopic(STORY_REQUESTS, 2, (short) 1);
+            if (!existingTopics.contains(publishTopic)) {
+                NewTopic storyRequestTopic = new NewTopic(publishTopic, 2, (short) 1);
                 // Blocks until created
                 admin.createTopics(Collections.singletonList(storyRequestTopic)).all().get();
-                logger.info("Created topic in Kafka {}", STORY_REQUESTS);
+                logger.info("Created topic in Kafka {}", publishTopic);
             }
 
 
@@ -109,7 +110,7 @@ public class StoryService {
                         }
                     """.formatted(finalReq.getTitle(), finalReq.getContent(), finalReq.getId());
 
-                kafkaTemplate.send(STORY_REQUESTS, messageContent);
+                kafkaTemplate.send(publishTopic, messageContent);
             }).start();
         }
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-if [ "${OTEL_ENABLED:-false}" = "true" ]; then
+if [ "${OTEL_AGENT_ENABLED:-false}" = "true" ]; then
   echo "🔶 OpenTelemetry agent enabled, launching with -javaagent"
   exec java \
     -javaagent:/otel/opentelemetry-javaagent.jar \

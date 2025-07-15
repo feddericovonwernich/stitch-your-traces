@@ -111,6 +111,9 @@ spec:
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: {{ .Release.Name }}-{{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}
 
+            - name: KAFKA_PUBLISH_TOPIC
+              value: {{ .Values.kafka.topic | default "story-requests" }}
+
             # Optional environment vars.
               {{- if .Values.env.spring }}
             - name: SPRING_PROFILES_ACTIVE

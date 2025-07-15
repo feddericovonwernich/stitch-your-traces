@@ -14,7 +14,7 @@ kubectl create secret generic mysql-auth \
 Command to apply the secret, so it is in the cluster.
 
 ```bash
-kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-secret.yaml -n story-space
 ```
 
 ## AI Story Creation Service Configuration
@@ -25,6 +25,12 @@ If we want to use OpenAI, we need to create a secret with the API key.
 kubectl create secret generic openai-api-key \
 --from-literal=api-key='sk-dummykey-1234567890abcdef1234567890abcdef' \
 --dry-run=client -o yaml > openai-secret.yaml
+```
+
+Command to apply the secret, so it is in the cluster.
+
+```bash
+kubectl apply -f openai-secret.yaml -n story-space
 ```
 
 It is applied the same way as above secret.
