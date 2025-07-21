@@ -63,7 +63,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.old
+      dockerfile: Dockerfile
     container_name: story-service
     restart: unless-stopped
     ports:

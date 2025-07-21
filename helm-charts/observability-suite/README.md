@@ -1,3 +1,7 @@
+# Observability Suite Helm Chart
+
+This chart installs the whole 
+
 ## Installing Observability Suite
 
 ```bash
