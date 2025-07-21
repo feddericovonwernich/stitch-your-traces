@@ -90,11 +90,11 @@ resources: {}
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /stories
+    path: /actuator/health
     port: 8080
 readinessProbe:
   httpGet:
-    path: /stories
+    path: /actuator/health
     port: 8080
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
