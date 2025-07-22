@@ -138,6 +138,7 @@ mysql: {}
 kafka: {}
 #  host: dummy_host
 #  port: 9092
+#  topic: story-requests
 
 # Values for some environment variables.
 env: {}

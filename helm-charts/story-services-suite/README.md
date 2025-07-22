@@ -27,11 +27,13 @@ kubectl create secret generic openai-api-key \
 --dry-run=client -o yaml > openai-secret.yaml
 ```
 
-It is applied the same way as above secret.
+Command to apply the secret, so it is in the cluster.
 
 ```bash
 kubectl apply -f openai-secret.yaml -n story-space
 ```
+
+It is applied the same way as above secret.
 
 ## Instrumentation configuration
 

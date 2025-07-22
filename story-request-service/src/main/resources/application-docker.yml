@@ -13,3 +13,5 @@ spring:
 
 kafka:
   bootstrap-servers: kafka:9092
+  publish-topic: story-requests
+

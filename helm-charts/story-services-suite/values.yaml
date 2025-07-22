@@ -30,14 +30,6 @@ kafka:
     transaction.state.log.replication.factor: "1"
     transaction.state.log.min.isr: "1"
 
-  # TODO I should let the service create this.
-  provisioning:
-    enabled: true
-    topics:
-      - name: story-requests
-        partitions: 1
-        replicationFactor: 1
-
   # --- Storage & replica counts -----------------------------------------------
   controller:
     replicaCount: 1
@@ -96,6 +88,7 @@ story-request-service:
 
   kafka:
     host: kafka
+    topic: story-requests
 
 ###############################################################################
 ## AI Story Creation Service #
@@ -113,7 +106,7 @@ ai-story-creation-service:
 
   env:
     kafka:
-      topic: story-requests # TODO This topic should be configurable in Story Request Service. ?
+      topic: story-requests
     llmProvider:
       selected: openai
       openai:

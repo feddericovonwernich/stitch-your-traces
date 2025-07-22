@@ -22,8 +22,6 @@ class OpenAIProvider(LLMProvider):
                 Title: {title}
                 
                 Brief: {content}
-                
-                Story:
             """
         )
 
@@ -38,6 +36,6 @@ class OpenAIProvider(LLMProvider):
         Returns:
             str: The generated short story.
         """
-        chain = LLMChain(llm=self.llm, prompt=self.prompt)
-        result = await chain.apredict(title=title, content=content)
-        return result.strip()
+        chain = self.prompt | self.llm
+        result = await chain.ainvoke({"title": title, "content": content})
+        return result.content

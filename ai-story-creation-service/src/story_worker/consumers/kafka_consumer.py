@@ -30,10 +30,12 @@ async def consume_loop():
     )
 
     await consumer.start()
+    logger.info("Kafka consumer started, listening to topic: %s", settings.kafka_topic)
 
     try:
         async for msg in consumer:
             try:
+                logger.exception("Processing message: %s", msg)
                 await process_message(msg.value)
             except Exception:
                 logger.exception("Error processing message=%s", msg)
