@@ -18,10 +18,32 @@ spec:
           fieldPath: status.hostIP
 
     # 2) Point the SDK to the node‑local collector (gRPC port 4317)
+#    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+#      value: http://$(NODE_IP):4317
+#    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+#      value: grpc  # Required for Python; Java already defaults to gRPC
+
+    # 2) Base HTTP endpoint for all signals
     - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: http://$(NODE_IP):4317
+      value: http://$(NODE_IP):4318
     - name: OTEL_EXPORTER_OTLP_PROTOCOL
-      value: grpc  # Required for Python; Java already defaults to gRPC
+      value: http/protobuf
+
+    # 3) Be explicit per signal (some SDKs ignore the generic ones)
+    - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+      value: http://$(NODE_IP):4318/v1/traces
+    - name: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
+      value: http/protobuf
+
+    - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+      value: http://$(NODE_IP):4318/v1/metrics
+    - name: OTEL_EXPORTER_OTLP_METRICS_PROTOCOL
+      value: http/protobuf
+
+    - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+      value: http://$(NODE_IP):4318/v1/logs
+    - name: OTEL_EXPORTER_OTLP_LOGS_PROTOCOL
+      value: http/protobuf
 
   # ────────── Java block ──────────
   java:
@@ -33,4 +55,4 @@ spec:
   python:
     env:
       - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
-        value: "true"
+        value: "false"

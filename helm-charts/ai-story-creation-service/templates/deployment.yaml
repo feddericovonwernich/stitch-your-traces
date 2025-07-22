@@ -90,8 +90,9 @@ spec:
 
           env:
 
+            # TODO Hardcoded http, should be configurable to be able to set https.
             - name: STORY_SERVICE_URL
-              value: {{ .Release.Name }}-{{ .Values.storyRequest.host }}:{{ .Values.storyRequest.port | default 8080 }}
+              value: http://{{ .Release.Name }}-{{ .Values.storyRequest.host }}:{{ .Values.storyRequest.port | default 8080 }}
 
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: {{ .Release.Name }}-{{ .Values.kafka.host }}:{{ .Values.kafka.port | default 9092 }}

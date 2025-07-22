@@ -90,6 +90,9 @@ services:
       - .env.docker
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+    ports:
+      # expose service API
+      - "8000:8000"
 
 volumes:
   mysql_data:

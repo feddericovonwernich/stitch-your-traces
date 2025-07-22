@@ -1,3 +1,11 @@
+## Story Services Suite Helm Chart
+
+Create namespace if it's not created already:
+
+```bash
+kubectl create namespace story-space
+```
+
 ## MySQL Configuration
 
 Command to create secret it. This command does not apply it directly to the cluster. It just generates the file that 

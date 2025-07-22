@@ -29,6 +29,10 @@ The definition for this is in the `otel-collector-values.yaml` file. It contains
 Collector, including receivers, processors, exporters, and service settings.
 
 ```bash
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts && helm repo update
+```
+
+```bash
 helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   --namespace observability --create-namespace -f ./otel-collector-values.yaml
 ```
@@ -36,6 +40,15 @@ helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
 ## Accessing the tools in a local environment
 
 I'm using Minikube to deploy these tools. To access them we need to take note of the cluster EXTERNAL-IP and add it to our `/etc/hosts` file.
+
+Install nginx ingress controller:
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx && helm repo update
+```
+```bash
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+```
 
 ```bash
 kubectl get svc ingress-nginx-controller -n ingress-nginx -o wide

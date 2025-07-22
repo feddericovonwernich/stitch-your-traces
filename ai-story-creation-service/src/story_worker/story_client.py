@@ -28,7 +28,7 @@ class StoryClient:
         Raises:
             httpx.HTTPStatusError: If the response status is an error.
         """
-        url = f"{self.base_url}/{story_id}"
+        url = f"{self.base_url}/stories/{story_id}"
 
         save_req = SaveStoryRequest(title=title, content=content)
 
