@@ -11,25 +11,19 @@ spec:
 
   # ─── env injected into *every* container, any language ───
   env:
-    # 1) Grab the node’s IP (Downward API)
+    # Grab the node’s IP (Downward API)
     - name: NODE_IP
       valueFrom:
         fieldRef:
           fieldPath: status.hostIP
 
-    # 2) Point the SDK to the node‑local collector (gRPC port 4317)
-#    - name: OTEL_EXPORTER_OTLP_ENDPOINT
-#      value: http://$(NODE_IP):4317
-#    - name: OTEL_EXPORTER_OTLP_PROTOCOL
-#      value: grpc  # Required for Python; Java already defaults to gRPC
-
-    # 2) Base HTTP endpoint for all signals
+    # Base HTTP endpoint for all signals
     - name: OTEL_EXPORTER_OTLP_ENDPOINT
       value: http://$(NODE_IP):4318
     - name: OTEL_EXPORTER_OTLP_PROTOCOL
       value: http/protobuf
 
-    # 3) Be explicit per signal (some SDKs ignore the generic ones)
+    # Be explicit per signal (some SDKs ignore the generic ones)
     - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
       value: http://$(NODE_IP):4318/v1/traces
     - name: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
@@ -40,10 +34,11 @@ spec:
     - name: OTEL_EXPORTER_OTLP_METRICS_PROTOCOL
       value: http/protobuf
 
-    - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-      value: http://$(NODE_IP):4318/v1/logs
-    - name: OTEL_EXPORTER_OTLP_LOGS_PROTOCOL
-      value: http/protobuf
+    # Enable all three exporters
+    - name: OTEL_TRACES_EXPORTER
+      value: otlp
+    - name: OTEL_METRICS_EXPORTER
+      value: otlp
 
   # ────────── Java block ──────────
   java:

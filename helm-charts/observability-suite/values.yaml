@@ -7,11 +7,10 @@
 ###############################################################################
 grafana:
 
-  # TODO: These are secrets, how should this be handled?
+  # TODO: Handle secrets.
   adminUser: Fedderico
   adminPassword: mycustompass
 
-  # TODO: What is this configuring?
   persistence:
     enabled: true
     size: 10Gi
@@ -33,6 +32,27 @@ grafana:
   sidecar:
     datasources:
       enabled: true
+
+###############################################################################
+# MINIO # https://raw.githubusercontent.com/bitnami/charts/main/bitnami/minio/values.yaml
+###############################################################################
+common-minio:
+  enabled: true
+  auth:
+    # TODO: Handle secrets.
+    rootUser: "minio"
+    rootPassword: "supersecret"
+  provisioning:
+    enabled: true
+    buckets:
+      - name: loki-chunks
+      - name: loki-ruler
+      - name: loki-admin
+      - name: tempo-traces
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: standard
 
 ###############################################################################
 # KUBE-PROMETHEUS-STACK # https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml
@@ -88,13 +108,12 @@ loki:
         ruler: loki-ruler
         admin: loki-admin
       s3:
-        endpoint: http://{{ .Release.Name }}-minio:9000
-        # TODO: Can I remove these settings here?
-        region: us-east-1
-        accessKeyId: loki
+        endpoint: http://{{ .Release.Name }}-common-minio:9000
+        insecure: true
+        # TODO: Handle secrets.
+        accessKeyId: minio
         secretAccessKey: supersecret
         s3ForcePathStyle: true
-        insecure: true
 
     schemaConfig:
       configs:
@@ -117,63 +136,75 @@ loki:
   write: { replicas: 0 }
   backend: { replicas: 0 }
 
-  # Minio to emulate a S3 bucket
-  minio:
-    enabled: true
-    persistence:
-      enabled: true
-      size: 20Gi
-    buckets:
-      - name: loki-chunks
-      - name: loki-ruler
-      - name: loki-admin
-
   # Disable auth for now
   gateway:
     basicAuth:
       enabled: false
 
-###############################################################################
-# JAEGER # https://github.com/jaegertracing/helm-charts/blob/main/charts/jaeger/values.yaml
-###############################################################################
-jaeger:
+##################################################################################
+# TEMPO # https://github.com/grafana/helm-charts/blob/main/charts/tempo-distributed/values.yaml
+##################################################################################
 
-  provisionDataStore:
-    elasticsearch: false
-    cassandra: false
+tempo-distributed:
 
-  allInOne:
-    enabled: true
+  overrides:
+    defaults:
+      metrics_generator:
+        processors: [service-graphs, span-metrics, local-blocks]
 
-    collector:
-      otlp:
-        grpc:
-          name: otlp-grpc
-          port: 4317
-        http:
-          name: otlp-http
-          port: 4318
-
-    # ――― Expose the Jaeger UI (port 16686) ―――
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      hosts:
-        - jaeger.feddericovonwernich.com
-      pathType: Prefix
-      tls:
-        - secretName: jaeger-tls
-          hosts:
-            - jaeger.feddericovonwernich.com
-
-  # standalone sub-charts stay off
-  agent:
-    enabled: false
-  collector:
-    enabled: false
-  query:
-    enabled: false
-
-  # Storage is memory for ease of configuration
   storage:
-    type: memory
+    trace:
+      backend: s3
+      s3:
+        # TODO: Handle secrets.
+        access_key: "minio"
+        secret_key: "supersecret"
+        bucket: tempo-traces
+        endpoint: "{{ .Release.Name }}-common-minio:9000"
+        insecure: true
+
+  traces:
+    otlp:
+      grpc:
+        enabled: true
+      http:
+        enabled: true
+
+  distributor:
+    replicaCount: 1
+
+  ingester:
+    replicaCount: 1
+    wal:
+      enabled: true
+    lifecycler:
+      ring:
+        replication_factor: 1
+    persistence:
+      enabled: true
+      storageClass: standard
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+
+  querier:
+    replicaCount: 1
+
+  queryFrontend:
+    query:
+      enabled: true
+      replicaCount: 1
+
+  compactor:
+    enabled: true
+    replicaCount: 1
+
+  memcached:
+    enabled: false
+
+  metricsGenerator:
+    enabled: true
+    replicaCount: 1
+    lifecycler:
+      ring:
+        replication_factor: 1

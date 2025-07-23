@@ -20,16 +20,16 @@ data:
         isDefault: true
         editable: false
 
-      - name: Jaeger
-        uid: jaeger
-        type: jaeger
-        access: proxy
-        url: http://{{ .Release.Name }}-jaeger-query:16686
-        editable: false
-
       - name: Loki
         uid: loki
         type: loki
         access: proxy
         url: http://{{ .Release.Name }}-loki-gateway
+        editable: false
+
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://{{ .Release.Name }}-tempo-query-frontend:3200
         editable: false
