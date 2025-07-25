@@ -14,12 +14,14 @@ resources:
     memory: 128Mi
 
 presets:
-  hostMetrics:           # mounts /, /var/log, etc. & injects hostmetrics receiver
+  hostMetrics:
     enabled: true
-  kubernetesAttributes:  # injects k8s attributes processor & RBAC
+  kubernetesAttributes:
+    enabled: true
+  logsCollection:
     enabled: true
 
-# 1️⃣  open 8889/TCP on the pod *and* on the Service
+# Open 8889/TCP on the pod *and* on the Service
 ports:
   prometheus:                 # ← name can be anything; must match below
     enabled: true
@@ -37,13 +39,14 @@ ports:
     servicePort: 4317         # exposed by the Service
     protocol: TCP
 
-# 3️⃣  have Prometheus scrape every agent pod (DaemonSet ⇒ PodMonitor)
+# Have Prometheus scrape every agent pod (DaemonSet ⇒ PodMonitor)
 podMonitor:
   enabled: true
   metricsEndpoints:
     - port: prometheus
       path: /metrics
       interval: 15s
+
 
 # ─── Collector configuration ──────────────────────────────────────────────────────────────────────────────────────────
 # Everything under `.config` is copied verbatim into the
@@ -60,22 +63,41 @@ config:
         cpu: {}
         filesystem: {}
         memory: {}
+    filelog:
+      include:
+        - /var/log/pods/*/*/*.log
+      exclude:
+        - /var/log/pods/*/opentelemetry-collector/*.log
+      start_at: end
+      include_file_path: true
+      operators:
+        - type: container
 
   processors:
+    # Upsert the resource.service.name from one of those labels
+    resource:
+      attributes:
+        - action: upsert
+          key: service.name
+          from_attribute: k8s.container.name
+
     batch: {}
 
   exporters:
+
+    debug:
+      verbosity: detailed
+
     # ─── metrics ───────────────────────────────────────────────
     prometheus:
       endpoint: "0.0.0.0:8889"
     
-    # ─── traces ────────────────────────────────────────────────    
-    # Export to Jaeger through OTLP protocol
-    otlphttp/jaeger:
-      endpoint: "http://observability-jaeger-collector.observability.svc.cluster.local:4318"
+    # ─── traces ────────────────────────────────────────────────
+    otlphttp/tempo:
+      endpoint: "http://observability-tempo-distributor.observability.svc.cluster.local:4318"
       tls:
         insecure: true
-  
+
     # ─── logs ─────────────────────────────────────────────────
     loki:
       endpoint: "http://observability-loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
@@ -93,10 +115,10 @@ config:
       traces:
         receivers:  [otlp]
         processors: [batch]
-        exporters:  [otlphttp/jaeger]
+        exporters:  [otlphttp/tempo]
       
-      # Logs coming in over OTLP
+      # Logs coming in over OTLP and filelog
       logs:
-        receivers:  [otlp]
-        processors: [batch]
-        exporters:  [loki]
+        receivers: [otlp, filelog]
+        processors: [resource, batch]
+        exporters: [loki, debug]

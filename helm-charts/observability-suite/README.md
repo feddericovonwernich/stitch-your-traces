@@ -23,6 +23,11 @@ Get suite pods:
 kubectl get pods -n observability
 ```
 
+Get suite services:
+```bash
+kubectl get svc -n observability
+```
+
 ## OTel collector configuration
 
 The definition for this is in the `otel-collector-values.yaml` file. It contains the configuration for the OpenTelemetry
@@ -35,6 +40,12 @@ helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm
 ```bash
 helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
   --namespace observability --create-namespace -f ./otel-collector-values.yaml
+```
+
+To un-install the collector, you can use:
+
+```bash
+helm uninstall otel-collector --namespace observability
 ```
 
 ## Accessing the tools in a local environment
@@ -69,4 +80,5 @@ Add the following lines to your `/etc/hosts` file:
 10.111.195.188       prometheus.feddericovonwernich.com
 10.111.195.188       jaeger.feddericovonwernich.com
 10.111.195.188       loki.feddericovonwernich.com
+10.111.195.188       tempo.feddericovonwernich.com
 ```
