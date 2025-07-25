@@ -1,6 +1,7 @@
 # Observability Suite Helm Chart
 
-This chart installs the whole 
+This chart installs the whole observability suite used in a Kubernetes cluster.
+It consists of Grafana, Tempo, Prometheus and Loki.
 
 ## Installing Observability Suite
 

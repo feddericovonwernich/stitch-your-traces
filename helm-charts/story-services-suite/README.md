@@ -1,49 +1,39 @@
-## Story Services Suite Helm Chart
+# Story Services Suite Helm Chart
 
-Create namespace if it's not created already:
+This chart allows you to install the Story Services Suite, which includes the Story Request Service, AI Story Creation Service and
+ its dependencies, such as MySQL and Kafka.
 
-```bash
-kubectl create namespace story-space
-```
+## How to install in a Minikube cluster
 
-## MySQL Configuration
+### Local development: Minikube setup
 
-Command to create secret it. This command does not apply it directly to the cluster. It just generates the file that 
-we'll encode for storage in Git.
+If running locally, your minikube cluster needs to have the images, since they're not uploaded anywhere.
 
-```bash
-kubectl create secret generic mysql-auth \
---from-literal=mysql-root-password='rootpass' \
---from-literal=mysql-password='secretpass' \
---from-literal=mysql-replication-password=dummy \
---dry-run=client -o yaml > mysql-secret.yaml
-```
-
-Command to apply the secret, so it is in the cluster.
+Make sure Minikube is running.
 
 ```bash
-kubectl apply -f mysql-secret.yaml -n story-space
+minikube start
 ```
 
-## AI Story Creation Service Configuration
-
-If we want to use OpenAI, we need to create a secret with the API key.
-
+Point your shell to the Minikube docker daemon:
 ```bash
-kubectl create secret generic openai-api-key \
---from-literal=api-key='sk-dummykey-1234567890abcdef1234567890abcdef' \
---dry-run=client -o yaml > openai-secret.yaml
+eval $(minikube docker-env)
 ```
 
-Command to apply the secret, so it is in the cluster.
-
+Build story-request-service image:
 ```bash
-kubectl apply -f openai-secret.yaml -n story-space
+docker build -t story-request-service:latest ../../story-request-service
 ```
 
-It is applied the same way as above secret.
+Build ai-story-creation-service image:
+```bash
+docker build -t ai-story-creation-service:latest ../../ai-story-creation-service
+```
 
 ## Instrumentation configuration
+
+Regardless of where this is running. In order to use auto-instrumentation, the OpenTelemetry Operator needs to be
+installed in the cluster.
 
 ### Using the OpenTelemetry Kubernetes Operator
 
@@ -77,7 +67,68 @@ To check if it's running already:
 kubectl --namespace opentelemetry-operator-system get pods -l "app.kubernetes.io/instance=otel-operator"
 ```
 
-## Installing the Story-Services-Suite
+
+
+## Suite installation and configuration
+
+Create namespace if it's not created already:
+
+```bash
+kubectl create namespace story-space
+```
+
+### Apply OpenTelemetry instrumentation
+
+To put the instrumentation in place, we need to apply the `instrumentation-cr.yaml` file.
+
+```bash
+kubectl apply -f ./instrumentation-cr.yaml -n story-space
+```
+
+To remove the instrumentation custom resource:
+```bash
+kubectl delete -f ./instrumentation-cr.yaml -n story-space
+```
+
+### MySQL Configuration
+
+Command to create secret it. This command does not apply it directly to the cluster. It just generates the file that 
+we'll encode for storage in Git.
+
+```bash
+kubectl create secret generic mysql-auth \
+--from-literal=mysql-root-password='rootpass' \
+--from-literal=mysql-password='secretpass' \
+--from-literal=mysql-replication-password=dummy \
+--dry-run=client -o yaml > mysql-secret.yaml
+```
+
+Command to apply the secret, so it is in the cluster.
+
+```bash
+kubectl apply -f mysql-secret.yaml -n story-space
+```
+
+### AI Story Creation Service Configuration
+
+If we want to use OpenAI, we need to create a secret with the API key.
+
+```bash
+kubectl create secret generic openai-api-key \
+--from-literal=api-key='sk-dummykey-1234567890abcdef1234567890abcdef' \
+--dry-run=client -o yaml > openai-secret.yaml
+```
+
+Command to apply the secret, so it is in the cluster.
+
+```bash
+kubectl apply -f openai-secret.yaml -n story-space
+```
+
+It is applied the same way as above secret.
+
+
+### Installing the Story-Services-Suite
 
 Pull dependencies:
 
@@ -105,42 +156,4 @@ helm uninstall story-services -n story-space
 Generate template for debugging:
 ```bash
 helm template my-story ./ --namespace story-space --values ./values.yaml > template.yml
-```
-
-### Local development: Minikube setup
-
-If running locally, your minikube cluster needs to have the images, since they're not uploaded anywhere.
-
-Make sure Minikube is running.
-
-```bash
-minikube start
-```
-
-Point your shell to the Minikube docker daemon:
-```bash
-eval $(minikube docker-env)
-```
-
-Build story-request-service image:
-```bash
-docker build -t story-request-service:latest ../../story-request-service
-```
-
-Build ai-story-creation-service image:
-```bash
-docker build -t ai-story-creation-service:latest ../../ai-story-creation-service
-```
-
-### Apply OpenTelemetry instrumentation
-
-To put the instrumentation in place, we need to apply the `instrumentation-cr.yaml` file.
-
-```bash
-kubectl apply -f ./instrumentation-cr.yaml -n story-space
-```
-
-To remove the instrumentation custom resource:
-```bash
-kubectl delete -f ./instrumentation-cr.yaml -n story-space
 ```
