@@ -145,3 +145,5 @@ env: {}
 #      model: dummy_model
 #  kafka:
 #    topic: dummy_topic
+#  debug:
+#    enabled: true

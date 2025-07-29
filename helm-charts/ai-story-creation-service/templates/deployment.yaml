@@ -101,13 +101,18 @@ spec:
             - name: LLM_PROVIDER
               value: {{ .Values.env.llmProvider.selected }}
 
-            {{- if .Values.env.llmProvider.ollama }}
+              {{- if .Values.env.llmProvider.ollama }}
             - name: OLLAMA_API_URL
               value: {{ .Values.env.llmProvider.ollama.apiUrl }}
 
             - name: OLLAMA_MODEL
               value: {{ .Values.env.llmProvider.ollama.model }}
-            {{- end }}
+              {{- end }}
+
+              {{- if hasKey .Values.env "debug" }}
+            - name: DEBUG
+              value: {{ ternary "1" "0" (and .Values.env.debug.enabled (eq (toString .Values.env.debug.enabled) "true")) | quote }}
+              {{- end }}
 
             - name: KAFKA_TOPIC
               value: {{ .Values.env.kafka.topic }} # TODO This should not be optional, need to ensure its present.

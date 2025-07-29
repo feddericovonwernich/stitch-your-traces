@@ -1,6 +1,8 @@
 import logging
 
 from aiokafka import AIOKafkaConsumer
+from opentelemetry import trace, propagate, context
+
 from src.story_worker.config import settings
 from src.story_worker.processor import process_message
 
@@ -32,12 +34,25 @@ async def consume_loop():
     await consumer.start()
     logger.info("Kafka consumer started, listening to topic: %s", settings.kafka_topic)
 
+    tracer = trace.get_tracer(__name__)
+
     try:
         async for msg in consumer:
+            # ---- Propagation ---------------------------------------------------
+            headers_map = {k: v.decode() for k, v in (msg.headers or [])}
+            ctx = propagate.extract(headers_map)  # Remote context from Kafka headers
+            token = context.attach(ctx)  # Make it the current context
+
             try:
-                logger.exception("Processing message: %s", msg)
-                await process_message(msg.value)
+                # ---- Processing ------------------------------------------------
+                with tracer.start_as_current_span(
+                        "consume", context=context.get_current()
+                ) as span:
+                    logger.info("Processing message: %s", msg)
+                    await process_message(msg.value)
             except Exception:
                 logger.exception("Error processing message=%s", msg)
+            finally:
+                context.detach(token)
     finally:
         await consumer.stop()

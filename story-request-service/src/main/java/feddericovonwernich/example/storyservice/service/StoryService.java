@@ -12,6 +12,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -37,16 +39,19 @@ public class StoryService {
     private final StoryRepository storyRepository;
     private final StoryRequestRepository requestRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final Executor executor;
 
     @Value("${kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     public StoryService(StoryRepository storyRepository,
                         StoryRequestRepository requestRepository,
-                        KafkaTemplate<String, String> kafkaTemplate) {
+                        KafkaTemplate<String, String> kafkaTemplate,
+                        @Qualifier("storyPublishExecutor") Executor executor) {
         this.storyRepository = storyRepository;
         this.requestRepository = requestRepository;
         this.kafkaTemplate = kafkaTemplate;
+        this.executor = executor;
     }
 
     @PostConstruct
@@ -99,22 +104,24 @@ public class StoryService {
 
         if (dto.source() == StorySource.AI) {
             // Publication happens in background using a separate thread.
-            StoryRequest finalReq = req;
-
-            new Thread(() -> {
-                String messageContent = """
-                        {
-                            "title": "%s",
-                            "content": "%s",
-                            "id": %d
-                        }
-                    """.formatted(finalReq.getTitle(), finalReq.getContent(), finalReq.getId());
-
-                kafkaTemplate.send(publishTopic, messageContent);
-            }).start();
+            executor.execute(getPublishRequestTask(req));
         }
 
         return req;
+    }
+
+    private Runnable getPublishRequestTask(StoryRequest req) {
+        return () -> {
+            String messageContent = """
+                    {
+                        "title": "%s",
+                        "content": "%s",
+                        "id": %d
+                    }
+                """.formatted(req.getTitle(), req.getContent(), req.getId());
+
+            kafkaTemplate.send(publishTopic, messageContent);
+        };
     }
 
     @Transactional

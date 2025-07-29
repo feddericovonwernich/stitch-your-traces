@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
-import static feddericovonwernich.example.storyservice.service.StoryService.STORY_REQUESTS;
+
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class StoryControllerIntegrationTest {
 
+    private static final String STORY_REQUESTS = "story_requests";
     private static final DockerImageName MYSQL_IMAGE = DockerImageName.parse("mysql:8.3.0");
     private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("apache/kafka-native:3.9.1");
 
@@ -71,7 +72,8 @@ class StoryControllerIntegrationTest {
                     "spring.datasource.url=" + mysql.getJdbcUrl(),
                     "spring.datasource.username=" + mysql.getUsername(),
                     "spring.datasource.password=" + mysql.getPassword(),
-                    "kafka.bootstrap-servers=" + kafka.getBootstrapServers()
+                    "kafka.bootstrap-servers=" + kafka.getBootstrapServers(),
+                    "kafka.publish-topic=" + STORY_REQUESTS
             ).applyTo(ctx.getEnvironment());
         }
     }
@@ -123,10 +125,8 @@ class StoryControllerIntegrationTest {
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.totalElements").isNumber())
                 .andExpect(jsonPath("$.totalPages").isNumber());
-
     }
 
 

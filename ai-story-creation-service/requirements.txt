@@ -10,3 +10,5 @@ langchain-openai
 openai
 ollama
 pydantic-settings
+debugpy
+opentelemetry-api
