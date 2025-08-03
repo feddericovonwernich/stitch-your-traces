@@ -6,8 +6,7 @@ I'm using this project to show how auto-instrumentation is not enough to get the
 You need to add manual instrumentation to get the most out of it.
 ___
 
-Article Draft: https://medium.com/@feddericovonwernich/stitch-your-traces-lets-talk-about-auto-instrumentation-distributed-tracing-019b40ca618e
-
+Article: https://python.plainenglish.io/stitch-your-traces-lets-talk-about-auto-instrumentation-distributed-tracing-019b40ca618e
 ___
 
 ### Repository Content
